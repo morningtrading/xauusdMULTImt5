@@ -342,15 +342,9 @@ class PositionManager:
         volume_step = info.get('volume_step', 0.01)
         leverage = account.get('leverage', self.leverage)
         
-        # Calculate margin required for 1 standard lot
-        # Try native MT5 calculation first (more accurate for stocks/crypto)
-        margin_per_lot = self.mt5.calculate_margin(symbol, "BUY", 1.0, current_price)
-        
-        if margin_per_lot is None or margin_per_lot <= 0:
-            # Fallback to manual calculation
-            # Margin = (Contract Size * Lot Size * Price) / Leverage
-            margin_per_lot = (contract_size * 1.0 * current_price) / leverage
-            logger.debug(f"[{symbol}] Native margin calculation failed, using fallback: ${margin_per_lot:.2f}/lot")
+        # Calculate margin required for min lot
+        # Margin = (Contract Size * Lot Size * Price) / Leverage
+        margin_per_lot = (contract_size * 1.0 * current_price) / leverage
         
         # Check position sizing type
         if self.position_size_type == "fixed":
@@ -369,19 +363,8 @@ class PositionManager:
             # Round to volume step
             volume = max(min_volume, round(max_volume / volume_step) * volume_step)
         
-        # CRITICAL: Ensure volume is at least MT5's minimum
+        # CRITICAL: Ensure volume is at least MT5's minimum and properly rounded
         volume = max(volume, min_volume)
-        
-        # CRITICAL SAFETY CHECK: Does the final volume exceed our margin limit?
-        # This prevents taking giant trades when symbol min_volume is very large (e.g., stocks)
-        actual_margin_required = margin_per_lot * volume
-        if actual_margin_required > self.max_margin and self.position_size_type != "fixed":
-            strict_margin_allowance = self.max_margin * 1.10 # Allow 10% buffer for price fluctuations
-            if actual_margin_required > strict_margin_allowance:
-                logger.warning(f"[{symbol}] Required margin (${actual_margin_required:.2f}) for volume {volume} exceeds max margin (${self.max_margin:.2f})")
-                return 0.0, {"error": f"Min volume margin (${actual_margin_required:.2f}) > Limit (${self.max_margin:.2f})"}
-            else:
-                logger.debug(f"[{symbol}] Required margin (${actual_margin_required:.2f}) slightly exceeds limit (${self.max_margin:.2f}) but within 10% tolerance.")
         
         # Round to step with precision protection
         if volume_step > 0:
@@ -393,6 +376,11 @@ class PositionManager:
                 if '.' in str_step:
                     decimals = len(str_step.split('.')[1])
             volume = round(volume, decimals)
+        
+        # Safety floor check
+        if volume < min_volume:
+            volume = min_volume
+            logger.warning(f"[{symbol}] Volume adjusted to min_volume: {min_volume}")
         
         details = {
             "calculated_volume": volume,

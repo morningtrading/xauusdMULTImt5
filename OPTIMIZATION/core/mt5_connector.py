@@ -418,30 +418,6 @@ class MT5Connector:
             "spread": tick.ask - tick.bid,
             "time": datetime.fromtimestamp(tick.time).isoformat()
         }
-        
-    def calculate_margin(self, symbol: str, order_type: str, volume: float, price: float) -> Optional[float]:
-        """
-        Calculate margin required for a specific trade
-        
-        Args:
-            symbol: Trading symbol
-            order_type: "BUY" or "SELL"
-            volume: Lot size
-            price: Execution price
-            
-        Returns:
-            Margin required in account currency, or None if failed
-        """
-        if not self.ensure_connected() or not MT5_AVAILABLE:
-            return None
-            
-        mt5_order_type = mt5.ORDER_TYPE_BUY if order_type.upper() == "BUY" else mt5.ORDER_TYPE_SELL
-        
-        margin = mt5.order_calc_margin(mt5_order_type, symbol, volume, price)
-        if margin is None:
-            logger.warning(f"Failed to calculate margin for {symbol} (vol: {volume}, price: {price})")
-            
-        return margin
     
     def get_rates(self, symbol: str, timeframe: str, count: int = 100) -> Optional[List[Dict]]:
         """

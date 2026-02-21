@@ -1,0 +1,22 @@
+{
+    "comment": "Optimization Configuration",
+    "input_csv": "filtered_symbols_for_opt.csv",
+    "mode": "rolling",
+    "timeframes": [
+        "1m",
+        "5m",
+        "15m",
+        "1h",
+        "4h"
+    ],
+    "fast_ema": {
+        "start": 7,
+        "end": 38,
+        "step": 1
+    },
+    "slow_ema": {
+        "start": 14,
+        "end": 95,
+        "step": 1
+    }
+}
