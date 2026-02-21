@@ -94,6 +94,7 @@ class PositionManager:
         # Extract config values
         account_config = self.config.get('account', {})
         self.max_margin = account_config.get('max_margin_per_trade_usd', 10.0)
+        self.max_total_margin = account_config.get('max_total_margin_usd', 100.0)
         self.max_daily_loss_percent = account_config.get('max_daily_loss_percent', 75.0)
         self.leverage = account_config.get('default_leverage', 1000)
         self.position_size_type = account_config.get('position_size_type', 'margin')
@@ -144,7 +145,7 @@ class PositionManager:
         self.trade_log_path = self.log_dir / 'trade_history.csv'
         self._init_trade_log()
 
-        logger.info(f"PositionManager initialized: max_margin=${self.max_margin}, SL_type={self.sl_type}")
+        logger.info(f"PositionManager initialized: max_margin=${self.max_margin}, max_total_margin=${self.max_total_margin}, SL_type={self.sl_type}")
     
     def _init_trade_log(self):
         """Initialize trade log CSV if not exists"""
@@ -551,6 +552,18 @@ class PositionManager:
                 volume=0, price=0, sl=None, tp=None, ticket=None,
                 error=f"Daily loss limit: {loss_percent:.1f}%", margin_used=0,
                 timestamp=timestamp
+            )
+        
+        # 3.5. Global margin limit check
+        account_info = self.mt5.get_account_summary()
+        current_margin = account_info.get('margin', 0)
+        if current_margin >= self.max_total_margin:
+            logger.warning(f"[{symbol}] Global margin limit reached: ${current_margin:.2f} / ${self.max_total_margin}")
+            return TradeResult(
+                success=False, action=f"OPEN_{direction}", symbol=symbol,
+                volume=0, price=0, sl=None, tp=None, ticket=None,
+                error=f"Global margin limit: ${current_margin:.2f} / ${self.max_total_margin}",
+                margin_used=0, timestamp=timestamp
             )
         
         # 4. Calculate position size

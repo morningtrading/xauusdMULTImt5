@@ -4,8 +4,9 @@
     "_last_updated": "2026-01-28",
     "magic_number": 123456,
     "account": {
-        "demo_only": false,
+        "demo_only": true,
         "max_margin_per_trade_usd": 20.0,
+        "max_total_margin_usd": 100.0,
         "position_size_type": "symbol_specific",
         "fixed_volume": 0.01,
         "max_daily_loss_percent": 75.0,
@@ -19,28 +20,13 @@
     },
     "symbols": {
         "enabled": [
-            "USDTJPY",
-            "XLK",
-            "IYW",
-            "USDJPY",
             "XAUUSD",
-            "XAUUSD.crp",
-            "GOOG",
-            "NAS100ft",
             "BTCUSD",
-            "HK50ft",
-            "ES35",
-            "HK50",
-            "AAPL",
-            "AMAZON",
-            "MSFT",
-            "NVIDIA",
-            "TSLA",
-            "MU",
-            "EXXON",
-            "AMD",
-            "PLTR"
+            "NAS100ft",
+            "USDJPY",
+            "XLK"
         ],
+        "_comment_enabled": "Reduced to 5 high-quality symbols with positive backtests. Previously: USDTJPY, IYW, XAUUSD.crp, GOOG, HK50ft, ES35, HK50, AAPL, AMAZON, MSFT, NVIDIA, TSLA, MU, EXXON, AMD, PLTR",
         "available": [
             "STJ",
             "BE",

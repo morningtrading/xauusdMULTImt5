@@ -74,6 +74,7 @@ from core.mt5_connector import MT5Connector
 from core.ema_strategy import EMAStrategy, SignalType
 from core.position_manager import PositionManager
 from core.telegram_notifier import TelegramNotifier
+from core.constants import DEFAULTS
 from config.validate_config import validate_config
 
 # Load config early for logging setup
@@ -85,7 +86,8 @@ try:
         INSTANCE_ID = _cfg.get('telegram', {}).get('message_prefix', 'EMAX')
         if not INSTANCE_ID:
             INSTANCE_ID = Path(__file__).parent.name
-except Exception:
+except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+    # Use default INSTANCE_ID if config cannot be read
     pass
 
 # Configure logging
@@ -397,7 +399,7 @@ class TradingEngine:
              logger.error(f"[{symbol}] STRICT CONFIG ERROR: Missing '{e}' setting")
              return
         
-        bars = self.mt5.get_rates(symbol, timeframe, count=100)
+        bars = self.mt5.get_rates(symbol, timeframe, count=DEFAULTS['LOOKBACK_BARS'])
         if not bars:
             logger.warning(f"[{symbol}] Failed to get price data")
             return
@@ -503,7 +505,7 @@ class TradingEngine:
                 
                 # Get account info and EMA values for telegram
                 account = self.mt5.get_account_summary()
-                bars = self.mt5.get_rates(symbol, timeframe, 100)
+                bars = self.mt5.get_rates(symbol, timeframe, DEFAULTS['LOOKBACK_BARS'])
                 fast_ema = slow_ema = None
                 if bars is not None:
                     symbol_settings = self.config.get('symbols', {}).get('settings', {}).get(symbol, {})
@@ -540,7 +542,7 @@ class TradingEngine:
                 
                 # Get account info and EMA values for telegram
                 account = self.mt5.get_account_summary()
-                bars = self.mt5.get_rates(symbol, timeframe, 100)
+                bars = self.mt5.get_rates(symbol, timeframe, DEFAULTS['LOOKBACK_BARS'])
                 fast_ema = slow_ema = None
                 if bars is not None:
                     symbol_settings = self.config.get('symbols', {}).get('settings', {}).get(symbol, {})
