@@ -377,6 +377,54 @@ class TradingEngine:
             # Market Overview
             self.dashboard_data['market_overview'] = dict(self.market_overview)
     
+    def _execute_trade_entry(self, symbol: str, direction: str, result, signal_reason: str, timeframe: str):
+        """
+        Execute trade entry and send notifications
+        
+        Args:
+            symbol: Trading symbol
+            direction: "LONG" or "SHORT"
+            result: TradeResult from position_manager.open_position()
+            signal_reason: Reason for the trade signal
+            timeframe: Timeframe for data retrieval
+        """
+        if result.success:
+            # Console output
+            emoji = "🟢" if direction == "LONG" else "🔴"
+            print(f"\n{'='*50}")
+            print(f"{emoji} TRADE OPENED: {symbol} {direction}")
+            print(f"   Ticket: {result.ticket}")
+            print(f"   Volume: {result.volume}")
+            print(f"   Price:  {result.price}")
+            print(f"   SL:     {result.sl}")
+            print(f"{'='*50}\n")
+            
+            # Get account info and EMA values for telegram
+            account = self.mt5.get_account_summary()
+            bars = self.mt5.get_rates(symbol, timeframe, DEFAULTS['LOOKBACK_BARS'])
+            fast_ema = slow_ema = None
+            
+            if bars is not None:
+                symbol_settings = self.config.get('symbols', {}).get('settings', {}).get(symbol, {})
+                fast_period = symbol_settings.get('fast_ema', 9)
+                slow_period = symbol_settings.get('slow_ema', 41)
+                from core.ema_strategy import EMAStrategy
+                fast_ema = EMAStrategy.calculate_ema(bars['close'], fast_period)[-1]
+                slow_ema = EMAStrategy.calculate_ema(bars['close'], slow_period)[-1]
+            
+            # Send Telegram notification
+            self.telegram.notify_trade_entry(
+                symbol, direction, result.volume, result.price, result.sl, signal_reason,
+                margin=result.margin_used,
+                fast_ema=fast_ema,
+                slow_ema=slow_ema,
+                balance=account.get('balance'),
+                equity=account.get('equity')
+            )
+        elif result.error:
+            print(f"\n❌ ORDER FAILED [{symbol}]: {result.error}\n")
+            self.telegram.notify_error("Order Failed", result.error, symbol)
+    
     def _process_symbol(self, symbol: str):
         """
         Process a single symbol: get data, analyze, execute
@@ -494,77 +542,11 @@ class TradingEngine:
 
         if signal.action == SignalType.BUY:
             result = self.position_manager.open_position(symbol, "LONG", signal.reason)
-            if result.success:
-                print(f"\n{'='*50}")
-                print(f"🟢 TRADE OPENED: {symbol} LONG")
-                print(f"   Ticket: {result.ticket}")
-                print(f"   Volume: {result.volume}")
-                print(f"   Price:  {result.price}")
-                print(f"   SL:     {result.sl}")
-                print(f"{'='*50}\n")
-                
-                # Get account info and EMA values for telegram
-                account = self.mt5.get_account_summary()
-                bars = self.mt5.get_rates(symbol, timeframe, DEFAULTS['LOOKBACK_BARS'])
-                fast_ema = slow_ema = None
-                if bars is not None:
-                    symbol_settings = self.config.get('symbols', {}).get('settings', {}).get(symbol, {})
-                    fast_period = symbol_settings.get('fast_ema', 9)
-                    slow_period = symbol_settings.get('slow_ema', 41)
-                    # fast_period = 9  # TEST OVERRIDE: Force 9
-                    # slow_period = 35 # TEST OVERRIDE: Force 35
-                    from core.ema_strategy import EMAStrategy
-                    fast_ema = EMAStrategy.calculate_ema(bars['close'], fast_period)[-1]
-                    slow_ema = EMAStrategy.calculate_ema(bars['close'], slow_period)[-1]
-                
-                self.telegram.notify_trade_entry(
-                    symbol, "LONG", result.volume, result.price, result.sl, signal.reason,
-                    margin=result.margin_used,
-                    fast_ema=fast_ema,
-                    slow_ema=slow_ema,
-                    balance=account.get('balance'),
-                    equity=account.get('equity')
-                )
-            elif result.error:
-                print(f"\n❌ ORDER FAILED [{symbol}]: {result.error}\n")
-                self.telegram.notify_error("Order Failed", result.error, symbol)
+            self._execute_trade_entry(symbol, "LONG", result, signal.reason, timeframe)
         
         elif signal.action == SignalType.SELL:
             result = self.position_manager.open_position(symbol, "SHORT", signal.reason)
-            if result.success:
-                print(f"\n{'='*50}")
-                print(f"🔴 TRADE OPENED: {symbol} SHORT")
-                print(f"   Ticket: {result.ticket}")
-                print(f"   Volume: {result.volume}")
-                print(f"   Price:  {result.price}")
-                print(f"   SL:     {result.sl}")
-                print(f"{'='*50}\n")
-                
-                # Get account info and EMA values for telegram
-                account = self.mt5.get_account_summary()
-                bars = self.mt5.get_rates(symbol, timeframe, DEFAULTS['LOOKBACK_BARS'])
-                fast_ema = slow_ema = None
-                if bars is not None:
-                    symbol_settings = self.config.get('symbols', {}).get('settings', {}).get(symbol, {})
-                    fast_period = symbol_settings.get('fast_ema', 9)
-                    slow_period = symbol_settings.get('slow_ema', 41)
-                    # fast_period = 9  # TEST OVERRIDE: Force 9
-                    # slow_period = 35 # TEST OVERRIDE: Force 35
-                    from core.ema_strategy import EMAStrategy
-                    fast_ema = EMAStrategy.calculate_ema(bars['close'], fast_period)[-1]
-                    slow_ema = EMAStrategy.calculate_ema(bars['close'], slow_period)[-1]
-                
-                self.telegram.notify_trade_entry(
-                    symbol, "SHORT", result.volume, result.price, result.sl, signal.reason,
-                    margin=result.margin_used,
-                    fast_ema=fast_ema,
-                    slow_ema=slow_ema,
-                    balance=account.get('balance'),
-                    equity=account.get('equity')
-                )
-            elif result.error:
-                print(f"\n❌ ORDER FAILED [{symbol}]: {result.error}\n")
-                self.telegram.notify_error("Order Failed", result.error, symbol)
+            self._execute_trade_entry(symbol, "SHORT", result, signal.reason, timeframe)
         
         elif signal.action in [SignalType.EXIT_LONG, SignalType.EXIT_SHORT]:
             if positions:
