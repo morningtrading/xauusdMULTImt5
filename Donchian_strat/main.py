@@ -210,7 +210,7 @@ class DonchianEngine:
             result = self.mt5.close_all_positions()
             logger.info(f"Close all positions: {result}")
             self.telegram.send_message(
-                f"🚨 <b>ALL POSITIONS CLOSED</b>\n"
+                f"<b>ALL POSITIONS CLOSED</b>\n"
                 f"Closed: {result.get('closed', 0)}\n"
                 f"Failed: {result.get('failed', 0)}"
             )
@@ -358,9 +358,8 @@ class DonchianEngine:
         self.running = True
         self.dashboard_data['engine_status']['running'] = True
         
-        # Initialize MT5 connection status
+        # Initialize MT5 connection status timestamp (will update in first cycle)
         self.last_mt5_check = time.time()
-        self.update_mt5_connection_status()
 
         # Start dashboard
         dash_config = self.config.get('dashboard', {})
@@ -385,6 +384,10 @@ class DonchianEngine:
         )
 
         logger.info(f"Engine started. Symbols: {self.enabled_symbols}")
+        
+        # Initial MT5 status update after dashboard is running
+        time.sleep(2)  # Give dashboard thread time to initialize
+        self.update_mt5_connection_status()
 
         # Main loop
         while self.running:
