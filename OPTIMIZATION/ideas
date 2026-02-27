@@ -1,3 +1,17 @@
 sweep fast ema 07 to 37
 sweep slow ema 14-94
 
+
+Processing NAS100ft [15m] (Spread: 170, Cost: 1.70000)...
+  Rolling over 7 months with validation split...
+    M:202510 | Params: (10, 14) | FAILED VALIDATION
+    M:202511 | Params: (37, 94) | FAILED VALIDATION
+    M:202512 | Params: (13, 19) | PnL: -1641.99 | PF: 0.59
+    M:202601 | Params: (7, 69) | FAILED VALIDATION
+    M:202602 | Params: (7, 14) | PnL: -29.10 | PF: 0.99
+
+alwyas give the nb of trades, consecutive win / losses andf remove the test with more than 7 consecutive losses as soon as we detect it
+give an explanation on why validation is failed on each line
+
+you ego is not your amigo
+

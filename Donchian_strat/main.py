@@ -118,11 +118,22 @@ class DonchianEngine:
                 'enabled_symbols': self.enabled_symbols,
                 'running': False,
                 'strategy_type': 'donchian'
-            }
+            },
+            'daily_pnl': {
+                'today': 0.0,
+                'starting_balance': 0.0,
+                'current_balance': 0.0,
+                'trades_today': 0,
+                'winners': 0,
+                'losers': 0
+            },
+            'trade_history': []  # Last 20 closed trades
         }
         self.dashboard_lock = threading.Lock()
         self.last_bar_time: Dict[str, str] = {}
         self.start_time = datetime.now()
+        self.daily_start_balance = 0.0
+        self.last_history_check = 0
 
         logger.info("DonchianEngine initialized")
 
@@ -140,6 +151,74 @@ class DonchianEngine:
         sym_settings = settings.get(symbol, {})
         return sym_settings.get('timeframe', 'H1')
 
+    def update_daily_pnl(self):
+        """Update daily P&L statistics"""
+        try:
+            account_info = self.mt5.get_account_summary()
+            if not account_info or 'error' in account_info:
+                return
+            
+            current_balance = account_info.get('balance', 0)
+            
+            # Initialize starting balance on first run or new day
+            if self.daily_start_balance == 0 or datetime.now().date() != self.start_time.date():
+                self.daily_start_balance = current_balance
+                self.start_time = datetime.now()
+            
+            daily_pnl = current_balance - self.daily_start_balance
+            
+            # Get today's trade history
+            today_deals = self.mt5.get_history_deals(days=1)
+            trades_today = len([d for d in today_deals if d.get('entry') == 1])  # entry=1 means 'out' (closed)
+            winners = len([d for d in today_deals if d.get('profit', 0) > 0 and d.get('entry') == 1])
+            losers = len([d for d in today_deals if d.get('profit', 0) < 0 and d.get('entry') == 1])
+            
+            with self.dashboard_lock:
+                self.dashboard_data['daily_pnl'] = {
+                    'today': daily_pnl,
+                    'starting_balance': self.daily_start_balance,
+                    'current_balance': current_balance,
+                    'trades_today': trades_today,
+                    'winners': winners,
+                    'losers': losers,
+                    'win_rate': (winners / trades_today * 100) if trades_today > 0 else 0
+                }
+        except Exception as e:
+            logger.error(f"Error updating daily P&L: {e}")
+    
+    def update_trade_history(self):
+        """Update trade history with last 20 closed trades"""
+        try:
+            # Get last 7 days of deals to ensure we have enough
+            deals = self.mt5.get_history_deals(days=7)
+            
+            # Filter for closed trades (entry=1 means 'out')
+            closed_trades = [d for d in deals if d.get('entry') == 1]
+            
+            # Sort by time (newest first) and take last 20
+            closed_trades.sort(key=lambda x: x.get('time', ''), reverse=True)
+            trade_history = closed_trades[:20]
+            
+            with self.dashboard_lock:
+                self.dashboard_data['trade_history'] = trade_history
+        except Exception as e:
+            logger.error(f"Error updating trade history: {e}")
+    
+    def close_all_positions(self):
+        """Close all open positions (panic button)"""
+        try:
+            result = self.mt5.close_all_positions()
+            logger.info(f"Close all positions: {result}")
+            self.telegram.send_message(
+                f"🚨 <b>ALL POSITIONS CLOSED</b>\n"
+                f"Closed: {result.get('closed', 0)}\n"
+                f"Failed: {result.get('failed', 0)}"
+            )
+            return result
+        except Exception as e:
+            logger.error(f"Error closing all positions: {e}")
+            return {'success': False, 'error': str(e)}
+    
     def update_mt5_connection_status(self):
         """Update MT5 connection status in dashboard data"""
         try:
@@ -157,8 +236,26 @@ class DonchianEngine:
                 }
                 self.dashboard_data['account_info'] = account_info
                 
-                # Update positions
+                # Update positions with duration and P&L percentage
                 positions = self.mt5.get_positions()
+                for pos in positions:
+                    # Calculate position duration
+                    if 'time' in pos:
+                        try:
+                            open_time = datetime.fromisoformat(pos['time'])
+                            duration = datetime.now() - open_time
+                            pos['duration_hours'] = duration.total_seconds() / 3600
+                        except:
+                            pos['duration_hours'] = 0
+                    
+                    # Calculate P&L percentage
+                    if 'price_open' in pos and 'profit' in pos and 'volume' in pos:
+                        try:
+                            # Rough estimation of P&L %
+                            pos['pnl_percent'] = (pos['profit'] / (pos['price_open'] * pos['volume'])) * 100
+                        except:
+                            pos['pnl_percent'] = 0
+                
                 self.dashboard_data['positions'] = positions
                 
                 # Update strategy status with timeframes
@@ -170,6 +267,15 @@ class DonchianEngine:
                     'enabled_symbols': self.enabled_symbols,
                     'symbol_timeframes': symbol_timeframes
                 }
+                
+                # Update daily P&L and trade history
+                self.update_daily_pnl()
+                
+                # Update trade history every 60 seconds
+                if time.time() - self.last_history_check > 60:
+                    self.update_trade_history()
+                    self.last_history_check = time.time()
+                    
         except Exception as e:
             logger.error(f"Error updating MT5 connection status: {e}")
             with self.dashboard_lock:

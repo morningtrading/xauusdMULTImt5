@@ -112,6 +112,27 @@ DASHBOARD_HTML = """
             &nbsp;&nbsp;|&nbsp;&nbsp;
             <span id="last-update"></span>
         </div>
+        <!-- Daily P&L Banner -->
+        <div style="margin-top:15px;padding:12px;background:rgba(255,255,255,0.08);border-radius:10px;">
+            <div style="display:flex;justify-content:space-around;flex-wrap:wrap;gap:15px;">
+                <div style="text-align:center;">
+                    <div style="color:#aaa;font-size:0.85em;">Today's P&L</div>
+                    <div id="daily-pnl" style="font-size:1.8em;font-weight:bold;" class="positive">$0.00</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="color:#aaa;font-size:0.85em;">Trades</div>
+                    <div id="trades-today" style="font-size:1.5em;font-weight:bold;color:#f7c948">0</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="color:#aaa;font-size:0.85em;">Win Rate</div>
+                    <div id="win-rate" style="font-size:1.5em;font-weight:bold;color:#ffaa00">0%</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="color:#aaa;font-size:0.85em;">Winners/Losers</div>
+                    <div id="win-loss" style="font-size:1.5em;font-weight:bold;"><span class="positive">0</span>/<span class="negative">0</span></div>
+                </div>
+            </div>
+        </div>
         <div class="status" style="margin-top: 10px;">
             <span style="color:#aaa">MT5:</span> 
             <span class="status-dot" id="mt5-status-dot"></span>
@@ -152,6 +173,9 @@ DASHBOARD_HTML = """
                 <button class="btn btn-yellow" onclick="apiCall('/api/direction', 'long')">Long Only</button>
                 <button class="btn btn-yellow" onclick="apiCall('/api/direction', 'short')">Short Only</button>
                 <button class="btn btn-yellow" onclick="apiCall('/api/direction', 'both')">Both</button>
+            </div>
+            <div style="margin-top:15px;border-top:1px solid rgba(255,255,255,0.1);padding-top:15px;">
+                <button class="btn btn-red" onclick="closeAllPositions()" style="width:100%;font-weight:bold;">🚨 CLOSE ALL POSITIONS</button>
             </div>
         </div>
     </div>
@@ -197,13 +221,23 @@ DASHBOARD_HTML = """
         </table>
     </div>
 
-    <div class="card">
+    <div class="card" style="margin-bottom:20px">
         <h2>Open Positions</h2>
         <table>
             <thead>
-                <tr><th>Symbol</th><th>Type</th><th>Volume</th><th>Entry</th><th>Current</th><th>P&L</th></tr>
+                <tr><th>Symbol</th><th>Type</th><th>Volume</th><th>Entry</th><th>Current</th><th>Duration</th><th>P&L</th><th>P&L %</th></tr>
             </thead>
             <tbody id="positions-table"></tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Trade History (Last 20)</h2>
+        <table>
+            <thead>
+                <tr><th>Time</th><th>Symbol</th><th>Type</th><th>Volume</th><th>Price</th><th>P&L</th></tr>
+            </thead>
+            <tbody id="history-table"></tbody>
         </table>
     </div>
 
@@ -263,6 +297,18 @@ DASHBOARD_HTML = """
                      body: data ? JSON.stringify({value:data}) : '{}'})
         .then(r=>r.json()).then(d=>console.log(d));
     }
+    
+    function closeAllPositions() {
+        if (confirm('⚠️ Are you sure you want to CLOSE ALL POSITIONS? This cannot be undone!')) {
+            fetch('/api/close_all', {method:'POST', headers:{'Content-Type':'application/json'}})
+            .then(r=>r.json())
+            .then(d => {
+                alert('Result: Closed ' + (d.closed || 0) + ' positions. Failed: ' + (d.failed || 0));
+                refresh();
+            })
+            .catch(e => alert('Error: ' + e));
+        }
+    }
 
     function refresh() {
         fetch('/api/status').then(r=>r.json()).then(data => {
@@ -297,6 +343,16 @@ DASHBOARD_HTML = """
             // Trading Direction
             let direction = (data.strategy_status || {}).direction || 'both';
             document.getElementById('trading-direction').textContent = direction.toUpperCase();
+            
+            // Daily P&L Banner
+            let pnl = data.daily_pnl || {};
+            let pnlEl = document.getElementById('daily-pnl');
+            pnlEl.textContent = '$' + fmt(pnl.today);
+            pnlEl.className = cls(pnl.today);
+            document.getElementById('trades-today').textContent = pnl.trades_today || 0;
+            document.getElementById('win-rate').textContent = fmt(pnl.win_rate, 1) + '%';
+            document.getElementById('win-loss').innerHTML = 
+                '<span class="positive">' + (pnl.winners || 0) + '</span>/<span class="negative">' + (pnl.losers || 0) + '</span>';
 
             // Account
             let acc = data.account_info || {};
@@ -348,14 +404,34 @@ DASHBOARD_HTML = """
             let ptbody = document.getElementById('positions-table');
             ptbody.innerHTML = '';
             if (pos.length === 0) {
-                ptbody.innerHTML = '<tr><td colspan="6" style="color:#666">No open positions</td></tr>';
+                ptbody.innerHTML = '<tr><td colspan="8" style="color:#666">No open positions</td></tr>';
             }
             for (let p of pos) {
+                let duration = p.duration_hours || 0;
+                let durStr = duration < 1 ? fmt(duration * 60, 0) + 'm' : fmt(duration, 1) + 'h';
                 ptbody.innerHTML +=
                     '<tr><td><b>'+p.symbol+'</b></td><td>'+(p.type==0?'LONG':'SHORT')+'</td>' +
                     '<td>'+fmt(p.volume,2)+'</td><td>'+fmt(p.price_open,5)+'</td>' +
-                    '<td>'+fmt(p.price_current,5)+'</td>' +
-                    '<td class="'+cls(p.profit)+'">'+fmt(p.profit)+'</td></tr>';
+                    '<td>'+fmt(p.price_current,5)+'</td><td>'+durStr+'</td>' +
+                    '<td class="'+cls(p.profit)+'">'+fmt(p.profit)+'</td>' +
+                    '<td class="'+cls(p.pnl_percent)+'">'+fmt(p.pnl_percent,2)+'%</td></tr>';
+            }
+            
+            // Trade History
+            let history = data.trade_history || [];
+            let htbody = document.getElementById('history-table');
+            htbody.innerHTML = '';
+            if (history.length === 0) {
+                htbody.innerHTML = '<tr><td colspan="6" style="color:#666">No trade history</td></tr>';
+            }
+            for (let h of history) {
+                let tradeType = h.type == 0 ? 'BUY' : 'SELL';
+                let timeStr = new Date(h.time).toLocaleString();
+                htbody.innerHTML +=
+                    '<tr><td style="font-size:0.85em">'+timeStr+'</td>' +
+                    '<td><b>'+h.symbol+'</b></td><td>'+tradeType+'</td>' +
+                    '<td>'+fmt(h.volume,2)+'</td><td>'+fmt(h.price,5)+'</td>' +
+                    '<td class="'+cls(h.profit)+'">'+fmt(h.profit)+'</td></tr>';
             }
         }).catch(e => console.error('Refresh error:', e));
     }
@@ -545,6 +621,15 @@ def set_direction():
         _engine.strategy.set_direction(direction)
         _engine.direction = direction
     return jsonify({'status': 'ok', 'direction': direction})
+
+
+@app.route('/api/close_all', methods=['POST'])
+def close_all():
+    """Close all open positions (panic button)"""
+    if _engine:
+        result = _engine.close_all_positions()
+        return jsonify(result)
+    return jsonify({'success': False, 'error': 'Engine not initialized'})
 
 
 @app.route('/api/chart_data/<symbol>')

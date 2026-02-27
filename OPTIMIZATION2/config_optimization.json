@@ -1,0 +1,44 @@
+{
+    "comment": "Enhanced Optimization Configuration - Coarser Grid to Reduce Overfitting",
+    "input_csv": "filtered_symbols_for_opt.csv",
+    "mode": "rolling_validation",
+    "timeframes": [
+        "15m",
+        "1h",
+        "4h"
+    ],
+    "fast_ema": {
+        "start": 7,
+        "end": 38,
+        "step": 3
+    },
+    "slow_ema": {
+        "start": 14,
+        "end": 95,
+        "step": 5
+    },
+    "thresholds": {
+        "min_trades": 10,
+        "min_win_rate": 25.0,
+        "max_dd_to_pnl_ratio": 5.0,
+        "min_profit_factor": 1.0,
+        "min_sharpe_ratio": 0.3
+    },
+    "features": {
+        "use_volume_filter": false,
+        "use_trend_filter": false,
+        "use_atr_stops": false,
+        "use_time_filter": false,
+        "atr_period": 14,
+        "atr_multiplier": 2.0
+    },
+    "transaction_costs": {
+        "spread_multiplier": 1.0,
+        "slippage_pips": 1
+    },
+    "regime_detection": {
+        "enabled": false,
+        "volatility_window": 20,
+        "high_vol_threshold": 1.5
+    }
+}

@@ -1,0 +1,42 @@
+{
+  "symbol_file": "GEN_01_liquid_symbols.csv",
+  "data_dir": "dataticks",
+  "output_file": "GEN_02_optimization_results.csv",
+  
+  "timeframes": ["15m", "1h"],
+  
+  "ema_ranges": {
+    "fast": [5, 21],
+    "slow": [21, 89]
+  },
+  
+  "step_size": {
+    "fast": 2,
+    "slow": 5
+  },
+  
+  "filters": {
+    "volume": {
+      "enabled": false
+    },
+    "trend": {
+      "enabled": false
+    },
+    "atr_stops": {
+      "enabled": false
+    }
+  },
+  
+  "thresholds": {
+    "min_trades": 10,
+    "min_profit_factor": 1.1,
+    "min_win_rate": 0
+  },
+  
+  "position_sizing": {
+    "enabled": true,
+    "risk_per_trade": 20.0,
+    "atr_multiplier": 2.5,
+    "use_fixed_lots": false
+  }
+}
