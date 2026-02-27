@@ -1,0 +1,153 @@
+{
+    "_comment": "Donchian Channel Breakout Trading Engine Configuration",
+    "_version": "1.0.0",
+    "_last_updated": "2026-02-22",
+    "_strategy_source": "OPTIMIZATION2/GEN_05_strategy_comparison.csv - Donchian was best strategy",
+    "magic_number": 234567,
+    "account": {
+        "demo_only": true,
+        "max_margin_per_trade_usd": 20.0,
+        "max_total_margin_usd": 100.0,
+        "position_size_type": "symbol_specific",
+        "fixed_volume": 0.01,
+        "max_daily_loss_percent": 75.0,
+        "default_leverage": 1000
+    },
+    "trailing_sl": {
+        "enabled": true,
+        "activation_points": 200,
+        "distance_points": 50,
+        "step_points": 10
+    },
+    "strategy": {
+        "type": "donchian",
+        "channel_period": 35,
+        "direction": "both",
+        "trading_enabled": true,
+        "prevent_duplicate_signals": true,
+        "min_bars_between_trades": 0,
+        "adx_min_threshold": 20,
+        "adx_period": 14,
+        "close_confirm": true,
+        "cooldown_bars": 3
+    },
+    "exit_rules": {
+        "exit_on_mid_cross": true,
+        "exit_on_opposite_breakout": true
+    },
+    "stop_loss": {
+        "type": "atr",
+        "fixed_percent_of_margin": 50.0,
+        "atr_multiplier": 2.0,
+        "atr_period": 14
+    },
+    "session_filter": {
+        "enabled": false,
+        "overlap_start_utc": "13:30",
+        "overlap_end_utc": "16:30",
+        "london_open_utc": "08:00",
+        "ny_close_utc": "20:00"
+    },
+    "data_refresh": {
+        "price_refresh_ms": 1000,
+        "order_refresh_ms": 2000
+    },
+    "telegram": {
+        "enabled": false,
+        "bot_token": "",
+        "chat_id": "",
+        "notify_on_entry": true,
+        "notify_on_exit": true,
+        "notify_on_error": true,
+        "daily_summary_utc": "21:00",
+        "message_prefix": "DONCHIAN"
+    },
+    "dashboard": {
+        "enabled": true,
+        "port": 8082,
+        "host": "0.0.0.0"
+    },
+    "symbols": {
+        "enabled": [
+            "XAUUSD"
+        ],
+        "_comment": "Top Donchian performers from multi-strategy backtest (Feb 2026)",
+        "settings": {
+        "Nikkei225": {
+                "timeframe": "H1",
+                "channel_period": 20,
+                "enabled": true,
+                "min_volume": 0.1,
+                "volume": 0.1,
+                "contract_size": 1,
+                "profit_currency": "JPY",
+                "max_spread_points": 9999
+            },
+            "BTCUSD": {
+                "timeframe": "H1",
+                "channel_period": 20,
+                "enabled": true,
+                "min_volume": 0.01,
+                "volume": 0.01,
+                "contract_size": 1,
+                "profit_currency": "USD",
+                "max_spread_points": 9999
+            },
+            "JPN225ft": {
+                "timeframe": "H1",
+                "channel_period": 20,
+                "enabled": true,
+                "min_volume": 0.1,
+                "volume": 0.1,
+                "contract_size": 1,
+                "profit_currency": "JPY",
+                "max_spread_points": 9999
+            },
+            "XAUUSD": {
+                "timeframe": "H1",
+                "channel_period": 35,
+                "enabled": true,
+                "min_volume": 0.01,
+                "volume": 0.01,
+                "contract_size": 100,
+                "profit_currency": "USD",
+                "max_spread_points": 9999
+            },
+            "GER40": {
+                "timeframe": "M15",
+                "channel_period": 20,
+                "enabled": true,
+                "min_volume": 0.1,
+                "volume": 0.1,
+                "contract_size": 1,
+                "profit_currency": "EUR",
+                "max_spread_points": 9999
+            },
+            "GER40ft": {
+                "timeframe": "M15",
+                "channel_period": 20,
+                "enabled": true,
+                "min_volume": 0.1,
+                "volume": 0.1,
+                "contract_size": 1,
+                "profit_currency": "EUR",
+                "max_spread_points": 9999
+            },
+            "NAS100": {
+                "timeframe": "M15",
+                "channel_period": 20,
+                "enabled": true,
+                "min_volume": 0.1,
+                "volume": 0.1,
+                "contract_size": 1,
+                "profit_currency": "USD",
+                "max_spread_points": 9999
+            }
+        }
+    },
+    "risk_management": {
+        "max_open_positions": 10,
+        "max_daily_trades": 50,
+        "max_correlated_positions": 3
+    }
+}
