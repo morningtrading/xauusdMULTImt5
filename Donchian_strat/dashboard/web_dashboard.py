@@ -175,7 +175,7 @@ DASHBOARD_HTML = """
                 <button class="btn btn-yellow" onclick="apiCall('/api/direction', 'both')">Both</button>
             </div>
             <div style="margin-top:15px;border-top:1px solid rgba(255,255,255,0.1);padding-top:15px;">
-                <button class="btn btn-red" onclick="closeAllPositions()" style="width:100%;font-weight:bold;">🚨 CLOSE ALL POSITIONS</button>
+                <button class="btn btn-red" onclick="closeAllPositions()" style="width:100%;font-weight:bold;">⚠ CLOSE ALL POSITIONS</button>
             </div>
         </div>
     </div>
